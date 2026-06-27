@@ -245,8 +245,14 @@ async def handle_type_choice(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     link = build_link(phone, biz_type, name)
     label = LABELS[biz_type]
+
+    # Длинная ссылка (кириллица в %XX-кодировке) легко превышает лимит
+    # Telegram на текст сообщения (4096 символов), поэтому отдаём её как
+    # кнопку, а не как текст — у поля url такого лимита нет.
+    keyboard = [[InlineKeyboardButton("📲 Открыть в WhatsApp", url=link)]]
     await query.edit_message_text(
-        f"Готово! Ссылка для {label} (номер {phone}):\n\n{link}"
+        f"Готово! Ссылка для {label} (номер {phone}) ниже 👇",
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
     # очищаем номер, чтобы случайно не переиспользовать его для другого клиента
     context.user_data.pop("phone", None)
