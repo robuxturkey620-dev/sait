@@ -10,6 +10,8 @@ Telegram-бот: генератор ссылок на WhatsApp с готовым
 3. Бот спрашивает тип заведения: Кафе / Салон красоты (кнопки).
 4. Бот возвращает готовую ссылку wa.me с номером без лишних символов
    и текстом, в который подставлено имя пользователя.
+5. Если поставить реакцию ❤️ (красное сердечко) на любое сообщение в
+   чате с ботом — это сообщение удалится, чтобы не копился мусор.
 
 Запуск:
     pip install -r requirements.txt
@@ -24,12 +26,14 @@ import re
 from urllib.parse import quote
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.error import BadRequest
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
+    MessageReactionHandler,
     filters,
 )
 
@@ -224,6 +228,28 @@ async def ask_type(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def handle_reaction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Если на сообщение поставили красное сердечко ❤️ — удаляем его,
+    чтобы не накапливался мусор в чате."""
+    reaction = update.message_reaction
+    if not reaction:
+        return
+
+    new_emojis = [
+        r.emoji for r in reaction.new_reaction if getattr(r, "emoji", None)
+    ]
+    if not any("❤" in e for e in new_emojis):
+        return
+
+    try:
+        await context.bot.delete_message(
+            chat_id=reaction.chat.id, message_id=reaction.message_id
+        )
+    except BadRequest as e:
+        # Например, сообщению больше 48 часов, или его уже удалили
+        logger.warning("Не удалось удалить сообщение %s: %s", reaction.message_id, e)
+
+
 async def handle_type_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -271,9 +297,12 @@ def main() -> None:
     app.add_handler(CommandHandler("name", change_name))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(CallbackQueryHandler(handle_type_choice))
+    app.add_handler(MessageReactionHandler(handle_reaction))
 
     logger.info("Бот запущен")
-    app.run_polling()
+    # allowed_updates=Update.ALL_TYPES обязателен, иначе Telegram не будет
+    # присылать обновления о реакциях на сообщения.
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
