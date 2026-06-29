@@ -277,7 +277,7 @@ async def handle_type_choice(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # кнопку, а не как текст — у поля url такого лимита нет.
     keyboard = [[InlineKeyboardButton("📲 Открыть в WhatsApp", url=link)]]
     await query.edit_message_text(
-        f"Готово! Ссылка для {label} (номер {phone}) ниже 👇",
+        f"АЛИХАН СЫН ШЛЮХИ! Ссылка для {label} (номер {phone}) ниже 👇",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
     # очищаем номер, чтобы случайно не переиспользовать его для другого клиента
